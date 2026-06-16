@@ -1,0 +1,12 @@
+[Unit]
+Description=MASS VM2 Startup
+After=docker.service network.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c "ip route add default via 192.168.60.1 dev ens33 2>/dev/null; docker start campus-ldap; docker start freeradius; sleep 5; systemctl start isc-dhcp-server; sleep 3; nohup python3 /home/menna/auto_deploy.py > /home/menna/auto_deploy.log 2>&1 &"
+
+[Install]
+WantedBy=multi-user.target

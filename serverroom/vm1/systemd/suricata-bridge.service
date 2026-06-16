@@ -1,0 +1,15 @@
+[Unit]
+Description=Suricata to Kafka Bridge
+After=suricata.service mass-startup.service
+Wants=suricata.service
+
+[Service]
+Type=simple
+User=menna
+ExecStartPre=/bin/bash -c "ip link set ens37 up 2>/dev/null || true"
+ExecStart=/usr/bin/python3 /home/menna/suricata_bridge.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

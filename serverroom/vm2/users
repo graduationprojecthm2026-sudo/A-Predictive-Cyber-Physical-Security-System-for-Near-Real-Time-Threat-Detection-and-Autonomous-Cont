@@ -1,0 +1,19 @@
+halasoliman Cleartext-Password := "hala1966"
+	Tunnel-Type = VLAN,
+	Tunnel-Medium-Type = IEEE-802,
+	Tunnel-Private-Group-Id = "10"
+
+stu_a1_001 Cleartext-Password := "student123"
+	Tunnel-Type = VLAN,
+	Tunnel-Medium-Type = IEEE-802,
+	Tunnel-Private-Group-Id = "10"
+
+staff_001 Cleartext-Password := "staff123"
+	Tunnel-Type = VLAN,
+	Tunnel-Medium-Type = IEEE-802,
+	Tunnel-Private-Group-Id = "15"
+
+staffuser Cleartext-Password := "staff2026"
+	Tunnel-Type = VLAN,
+	Tunnel-Medium-Type = IEEE-802,
+	Tunnel-Private-Group-Id = "15"
