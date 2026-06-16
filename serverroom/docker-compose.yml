@@ -1,0 +1,447 @@
+
+###############################################################################
+# MASS — Multi-Agent Security System
+# docker-compose.yml  — Full stack, production-ready
+#
+# Usage:
+#   cp ../.env.example ../.env   # fill secrets
+#   docker compose up -d
+#   docker compose --profile dev up -d   # also start kafka-ui
+###############################################################################
+
+services:
+
+  # ── MQTT Broker ────────────────────────────────────────────────────────────
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: campus-mosquitto
+    ports:
+      - "8883:8883"
+      - "1883:1883"     # plain for local dev
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+      - ../config/certificates:/mosquitto/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -p 1883 -t test -m ping -q 0 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Kafka + Zookeeper ──────────────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: campus-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: campus-kafka
+    stop_grace_period: 60s
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: campus-zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://campus-kafka:29092,PLAINTEXT_HOST://192.168.60.10:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: campus-kafka-ui
+    stop_grace_period: 60s
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: campus
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: campus-kafka:29092
+    restart: unless-stopped
+    profiles: ["dev"]
+
+  # ── Databases ──────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: campus-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-massadmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-masspass}
+      MONGO_INITDB_DATABASE: mass
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: campus-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_USER:-massadmin}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD:-masspass123}
+      DOCKER_INFLUXDB_INIT_ORG: campus-security
+      DOCKER_INFLUXDB_INIT_BUCKET: iot-telemetry
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:-campus-influx-token-changeme}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: campus-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: mass
+      POSTGRES_USER: ${POSTGRES_USER:-massadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-masspass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-massadmin} -d mass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: campus-grafana
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-masspass}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── LDAP ───────────────────────────────────────────────────────────────────
+  campus-ldap:
+    image: osixia/openldap:1.5.0
+    container_name: campus-ldap
+    environment:
+      LDAP_ORGANISATION: Smart Campus
+      LDAP_DOMAIN: mass.local
+      LDAP_ADMIN_PASSWORD: CampusSecure2026
+      LDAP_BASE_DN: dc=mass,dc=local
+      LDAP_TLS: 'false'
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    restart: unless-stopped
+
+  # ── Phase 1: IoT Agents ────────────────────────────────────────────────────
+  gateway-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-gateway-agent
+    healthcheck:
+      disable: true
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    environment:
+      AGENT_ID: gateway-docker-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      MQTT_BROKER: campus-mosquitto
+      HEALTH_PORT: "8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../config/certificates:/app/config/certificates:ro
+    command: ["python", "-m", "agents.iot.gateway_agent.main"]
+    restart: unless-stopped
+
+  behavioral-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-behavioral-agent
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      AGENT_ID: behavioral-agent-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8001"
+      IF_CONTAMINATION: "0.05"
+      MIN_TRAIN_SAMPLES: "50"
+      IF_SCORE_THRESHOLD: "-0.05"
+    ports:
+      - "8001:8001"
+    command: ["python", "-m", "agents.iot.behavioral_agent.main"]
+    restart: unless-stopped
+
+  iot-local-manager:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-iot-local-manager
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      MANAGER_ID: iot-local-manager-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8010"
+      HEARTBEAT_TIMEOUT_SEC: "20"
+      APPROVAL_WINDOW_SEC: "60"
+    ports:
+      - "8010:8010"
+    command: ["python", "-m", "managers.iot_local_manager.main"]
+    restart: unless-stopped
+
+  # ── Phase 2: Physical Access Agents ───────────────────────────────────────
+  pac-eda-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-pac-eda-agent
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      AGENT_ID: pac-eda-agent-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8002"
+    ports:
+      - "8002:8002"
+    command: ["python", "-m", "agents.physical_access.pac_eda_agent.main"]
+    restart: unless-stopped
+
+  credential-anomaly-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-cred-anomaly-agent
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      AGENT_ID: credential-anomaly-agent-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8003"
+    ports:
+      - "8003:8003"
+    command: ["python", "-m", "agents.physical_access.credential_anomaly_agent.main"]
+    restart: unless-stopped
+
+  pac-local-manager:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-pac-local-manager
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      MANAGER_ID: pac-local-manager-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8011"
+    ports:
+      - "8011:8011"
+    command: ["python", "-m", "managers.pac_local_manager.main"]
+    restart: unless-stopped
+
+  # ── Phase 3: Data Network Agents ───────────────────────────────────────────
+  ndr-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-ndr-agent
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      AGENT_ID: ndr-agent-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8004"
+    ports:
+      - "8004:8004"
+    command: ["python", "-m", "agents.data_network.ndr_agent.main"]
+    restart: unless-stopped
+
+  edr-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-edr-agent
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      AGENT_ID: edr-agent-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8005"
+      DEVICE_ID: 192-168-60-10
+    ports:
+      - "8005:8005"
+    command: ["python", "-m", "agents.data_network.edr_agent.main"]
+    restart: unless-stopped
+
+  data-local-manager:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-data-local-manager
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      MANAGER_ID: data-local-manager-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8012"
+    ports:
+      - "8012:8012"
+    command: ["python", "-m", "managers.data_local_manager.main"]
+    restart: unless-stopped
+
+  # ── Phase 4: HQ Agents ─────────────────────────────────────────────────────
+  analytical-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-analytical-agent
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      AGENT_ID: analytical-agent-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8006"
+    ports:
+      - "8006:8006"
+    command: ["python", "-m", "agents.hq.analytical_agent.main"]
+    restart: unless-stopped
+
+  orchestrator-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-orchestrator-agent
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      AGENT_ID: orchestrator-agent-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8007"
+    ports:
+      - "8007:8007"
+    command: ["python", "-m", "agents.hq.orchestrator_agent.main"]
+    restart: unless-stopped
+
+  learning-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-learning-agent
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      AGENT_ID: learning-agent-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8008"
+      RETRAIN_EVERY_N: "50"
+      RETRAIN_EVERY_H: "24"
+    ports:
+      - "8008:8008"
+    command: ["python", "-m", "agents.hq.learning_agent.main"]
+    restart: unless-stopped
+
+  central-manager:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: campus-central-manager
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      MANAGER_ID: central-manager-01
+      KAFKA_BOOTSTRAP: campus-kafka:29092
+      HEALTH_PORT: "8020"
+    ports:
+      - "8020:8020"
+    command: ["python", "-m", "managers.central_manager.main"]
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  influxdb_data:
+  postgres_data:
+  grafana_data:
+  mosquitto_data:
+  mosquitto_log:
+  kafka_data:
+  ldap_data:
+  ldap_config:
+
+networks:
+  default:
+    name: campus-mass-network
+

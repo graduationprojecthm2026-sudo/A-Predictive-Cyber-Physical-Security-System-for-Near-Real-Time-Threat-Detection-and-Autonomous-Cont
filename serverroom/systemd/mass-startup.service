@@ -1,0 +1,12 @@
+[Unit]
+Description=MASS System Startup - VM1
+After=docker.service network.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c "/sbin/ip addr add 192.168.60.10/24 dev ens33 || true && docker start campus-zookeeper && sleep 10 && docker start campus-kafka && sleep 15 && docker start campus-mongodb && docker start campus-influxdb && docker start campus-postgres && docker start campus-grafana && docker start campus-mosquitto && docker start campus-ldap && sleep 5 && nohup python3 /home/menna/suricata_bridge.py > /home/menna/suricata_bridge.log 2>&1 &"
+
+[Install]
+WantedBy=multi-user.target

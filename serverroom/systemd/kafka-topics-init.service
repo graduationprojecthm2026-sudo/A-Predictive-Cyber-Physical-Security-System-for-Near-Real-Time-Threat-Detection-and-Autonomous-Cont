@@ -1,0 +1,12 @@
+[Unit]
+Description=Initialize Kafka Topics
+After=mass-startup.service
+Requires=mass-startup.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/kafka-init-topics.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
