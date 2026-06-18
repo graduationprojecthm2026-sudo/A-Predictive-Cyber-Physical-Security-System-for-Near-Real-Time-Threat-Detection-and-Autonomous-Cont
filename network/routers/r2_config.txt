@@ -1,0 +1,779 @@
+
+Campus-R2>
+Campus-R2>en
+Campus-R2>enable 
+Campus-R2#terminal length 0
+Campus-R2#show running-config
+Building configuration...
+
+Current configuration : 6838 bytes
+!
+version 12.4
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+!
+hostname Campus-R2
+!
+boot-start-marker
+boot-end-marker
+!
+logging message-counter syslog
+no logging console
+!
+no aaa new-model
+no network-clock-participate wic 0 
+no network-clock-participate wic 3 
+!
+dot11 syslog
+ip source-route
+!
+!
+ip cef
+!
+!
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+!
+!
+archive
+ log config
+  hidekeys
+! 
+!
+!
+!
+!
+!
+class-map type inspect match-any ICMP_CLASS
+ match protocol icmp
+class-map type inspect match-any PERMIT_ALL_CLASS
+ match protocol icmp
+ match protocol tcp
+ match protocol udp
+class-map type inspect match-any DMZ_OUT_CLASS
+ match access-group name SERVERROOM_POLICY
+ match protocol icmp
+ match protocol tcp
+ match protocol udp
+class-map type inspect match-any ALL_PROTOCOLS
+ match protocol icmp
+ match protocol tcp
+ match protocol udp
+!
+!
+policy-map type inspect SELF_TO_ANY_POLICY
+ class class-default
+  pass
+policy-map type inspect DMZ_TO_CAMPUS_POLICY
+ class type inspect PERMIT_ALL_CLASS
+  inspect 
+ class type inspect ICMP_CLASS
+  inspect 
+ class type inspect ALL_PROTOCOLS
+  inspect 
+ class type inspect DMZ_OUT_CLASS
+  inspect 
+ class class-default
+  drop
+policy-map type inspect REAL_FIREWALL_POLICY
+ class type inspect PERMIT_ALL_CLASS
+  inspect 
+ class type inspect ICMP_CLASS
+  inspect 
+ class type inspect ALL_PROTOCOLS
+  inspect 
+ class class-default
+  drop
+!
+!
+!
+!
+interface FastEthernet0/0
+ ip address 10.0.2.2 255.255.255.252
+ ip access-group SERVERROOM_POLICY in
+ duplex auto
+ speed auto
+!
+interface FastEthernet0/1
+ ip address 192.168.60.1 255.255.255.0
+ ip access-group FROM_SERVERS in
+ duplex auto
+ speed auto
+!
+interface Serial0/0/0
+ no ip address
+ shutdown
+ no fair-queue
+ clock rate 2016000
+!
+interface Serial0/0/1
+ no ip address
+ shutdown
+ clock rate 2016000
+!
+interface Serial0/0/2
+ no ip address
+ shutdown
+ clock rate 2016000
+!
+interface Serial0/0/3
+ no ip address
+ shutdown
+ clock rate 2016000
+!
+interface Serial0/1/0
+ no ip address
+ shutdown
+ clock rate 2000000
+!
+interface Serial0/1/1
+ no ip address
+ shutdown
+ clock rate 2000000
+!
+interface GigabitEthernet0/2/0
+ no ip address
+ shutdown
+ negotiation auto
+!
+interface Serial0/3/0
+ no ip address
+ shutdown
+ clock rate 2016000
+!
+interface Serial0/3/1
+ no ip address
+ shutdown
+ clock rate 2016000
+!
+interface Serial0/3/2
+ no ip address
+ shutdown
+ clock rate 2016000
+!
+interface Serial0/3/3
+ no ip address
+ shutdown
+ clock rate 2016000
+!
+router ospf 1
+ log-adjacency-changes
+ network 10.0.2.0 0.0.0.3 area 0
+ network 192.168.60.0 0.0.0.255 area 0
+!
+ip forward-protocol nd
+no ip http server
+no ip http secure-server
+!
+!
+!
+ip access-list extended CAMPUS_TRAFFIC
+ permit ip 192.168.0.0 0.0.255.255 any
+ip access-list extended DMZ_PROTECTION
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit udp 192.168.10.0 0.0.0.255 host 192.168.60.13 eq domain
+ permit tcp 192.168.40.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit tcp 192.168.40.0 0.0.0.255 host 192.168.60.10 eq 1883
+ permit tcp 192.168.31.0 0.0.0.255 host 192.168.60.10 eq 1883
+ permit tcp 192.168.12.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit tcp 192.168.31.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit tcp 192.168.12.0 0.0.0.255 host 192.168.60.11 eq 389
+ permit tcp 192.168.31.0 0.0.0.255 host 192.168.60.11 eq 389
+ permit icmp any any
+ permit tcp 192.168.40.0 0.0.0.255 host 192.168.60.10 eq 5432
+ permit tcp 192.168.12.0 0.0.0.255 host 192.168.60.10 eq 5432
+ deny   ip any any
+ip access-list extended FROM_SERVERS
+ permit ip 192.168.60.0 0.0.0.255 192.168.10.0 0.0.0.255
+ permit ip 192.168.60.0 0.0.0.255 192.168.15.0 0.0.0.255
+ permit ip 192.168.60.0 0.0.0.255 192.168.20.0 0.0.0.255
+ permit ip 192.168.60.0 0.0.0.255 192.168.40.0 0.0.0.255
+ permit icmp any any
+ permit ip 192.168.60.0 0.0.0.255 192.168.12.0 0.0.0.255
+ permit ip 192.168.60.0 0.0.0.255 192.168.31.0 0.0.0.255
+ip access-list extended SERVERROOM_POLICY
+ permit udp any any eq bootps
+ permit udp any any eq bootpc
+ permit ip 10.0.0.0 0.255.255.255 any
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit udp 192.168.10.0 0.0.0.255 host 192.168.60.13 eq domain
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.60.13 eq domain
+ permit icmp 192.168.10.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit udp 192.168.10.0 0.0.0.255 host 192.168.60.11 eq 1812
+ permit udp 192.168.10.0 0.0.0.255 host 192.168.60.11 eq 1813
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.60.11 eq 22
+ permit tcp 192.168.10.0 0.0.0.255 eq 22 host 192.168.60.11
+ permit tcp 192.168.15.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit tcp 192.168.15.0 0.0.0.255 host 192.168.60.11 eq 22
+ permit tcp 192.168.15.0 0.0.0.255 eq 22 host 192.168.60.11
+ permit tcp 192.168.15.0 0.0.0.255 host 192.168.60.11 eq 9995
+ permit udp 192.168.15.0 0.0.0.255 host 192.168.60.13 eq domain
+ permit tcp 192.168.15.0 0.0.0.255 host 192.168.60.13 eq domain
+ permit icmp 192.168.15.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit tcp 192.168.20.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit tcp 192.168.20.0 0.0.0.255 host 192.168.60.10 eq 1883
+ permit icmp 192.168.20.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit tcp 192.168.31.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit tcp 192.168.31.0 0.0.0.255 host 192.168.60.11 eq 389
+ permit icmp 192.168.31.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit tcp 192.168.32.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit tcp 192.168.32.0 0.0.0.255 host 192.168.60.11 eq 389
+ permit icmp 192.168.32.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit tcp 192.168.40.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit tcp 192.168.40.0 0.0.0.255 host 192.168.60.10 eq 1883
+ permit tcp 192.168.40.0 0.0.0.255 host 192.168.60.11 eq 27017
+ permit icmp 192.168.40.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit udp 192.168.40.0 0.0.0.255 host 192.168.60.11 eq 1812
+ permit udp 192.168.40.0 0.0.0.255 host 192.168.60.11 eq 1813
+ permit tcp 192.168.41.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit tcp 192.168.41.0 0.0.0.255 host 192.168.60.10 eq 1883
+ permit tcp 192.168.41.0 0.0.0.255 host 192.168.60.11 eq 27017
+ permit icmp 192.168.41.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit tcp 192.168.12.0 0.0.0.255 host 192.168.60.10 eq 9092
+ permit icmp 192.168.12.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit tcp 192.168.40.0 0.0.0.255 host 192.168.60.10 eq 5432
+ permit tcp 192.168.12.0 0.0.0.255 host 192.168.60.10 eq 5432
+ deny   ip any any
+ip access-list extended TO_SERVERS
+ permit ip 192.168.10.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit ip 192.168.20.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit ip 192.168.40.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit ip 192.168.41.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit ip 192.168.12.0 0.0.0.255 192.168.60.0 0.0.0.255
+ permit icmp any any
+!
+!
+!
+!
+!
+!
+control-plane
+!
+!
+line con 0
+line aux 0
+line vty 0 4
+ login
+!
+scheduler allocate 20000 1000
+end
+
+Campus-R2#show version
+Cisco IOS Software, 2800 Software (C2800NM-ADVSECURITYK9-M), Version 12.4(24)T, RELEASE SOFTWARE (fc1)
+Technical Support: http://www.cisco.com/techsupport
+Copyright (c) 1986-2009 by Cisco Systems, Inc.
+Compiled Wed 25-Feb-09 17:55 by prod_rel_team
+
+ROM: System Bootstrap, Version 12.4(13r)T, RELEASE SOFTWARE (fc1)
+
+Campus-R2 uptime is 7 hours, 34 minutes
+System returned to ROM by power-on
+System image file is "flash:c2800nm-advsecurityk9-mz.124-24.T.bin"
+
+
+This product contains cryptographic features and is subject to United
+States and local country laws governing import, export, transfer and
+use. Delivery of Cisco cryptographic products does not imply
+third-party authority to import, export, distribute or use encryption.
+Importers, exporters, distributors and users are responsible for
+compliance with U.S. and local country laws. By using this product you
+agree to comply with applicable laws and regulations. If you are unable
+to comply with U.S. and local laws, return this product immediately.
+
+A summary of U.S. laws governing Cisco cryptographic products may be found at:
+http://www.cisco.com/wwl/export/crypto/tool/stqrg.html
+
+If you require further assistance please contact us by sending email to
+export@cisco.com.
+
+Cisco 2811 (revision 53.50) with 245760K/16384K bytes of memory.
+Processor board ID FCZ11327435
+2 FastEthernet interfaces
+1 Gigabit Ethernet interface
+10 Serial(sync/async) interfaces
+1 Virtual Private Network (VPN) Module
+DRAM configuration is 64 bits wide with parity enabled.
+239K bytes of non-volatile configuration memory.
+62720K bytes of ATA CompactFlash (Read/Write)
+
+Configuration register is 0x2102
+
+Campus-R2#show ip interface brief
+Interface                  IP-Address      OK? Method Status                Protocol
+FastEthernet0/0            10.0.2.2        YES NVRAM  up                    up      
+FastEthernet0/1            192.168.60.1    YES NVRAM  up                    up      
+Serial0/0/0                unassigned      YES NVRAM  administratively down down    
+Serial0/0/1                unassigned      YES NVRAM  administratively down down    
+Serial0/0/2                unassigned      YES NVRAM  administratively down down    
+Serial0/0/3                unassigned      YES NVRAM  administratively down down    
+Serial0/1/0                unassigned      YES NVRAM  administratively down down    
+Serial0/1/1                unassigned      YES NVRAM  administratively down down    
+GigabitEthernet0/2/0       unassigned      YES NVRAM  administratively down down    
+Serial0/3/0                unassigned      YES NVRAM  administratively down down    
+Serial0/3/1                unassigned      YES NVRAM  administratively down down    
+Serial0/3/2                unassigned      YES NVRAM  administratively down down    
+Serial0/3/3                unassigned      YES NVRAM  administratively down down    
+SSLVPN-VIF0                unassigned      NO  unset  up                    up      
+Campus-R2#show ip interface brief                       show ip route
+Codes: C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route
+
+Gateway of last resort is not set
+
+O    192.168.12.0/24 [110/4] via 10.0.2.1, 04:33:19, FastEthernet0/0
+O    192.168.31.0/24 [110/2] via 10.0.2.1, 04:42:07, FastEthernet0/0
+O    192.168.15.0/24 [110/2] via 10.0.2.1, 04:42:07, FastEthernet0/0
+C    192.168.60.0/24 is directly connected, FastEthernet0/1
+O    192.168.10.0/24 [110/2] via 10.0.2.1, 04:42:07, FastEthernet0/0
+O    192.168.40.0/24 [110/2] via 10.0.2.1, 04:42:07, FastEthernet0/0
+O    192.168.41.0/24 [110/2] via 10.0.2.1, 04:42:07, FastEthernet0/0
+O    192.168.99.0/24 [110/2] via 10.0.2.1, 04:42:08, FastEthernet0/0
+O    192.168.20.0/24 [110/2] via 10.0.2.1, 04:42:08, FastEthernet0/0
+     10.0.0.0/30 is subnetted, 3 subnets
+C       10.0.2.0 is directly connected, FastEthernet0/0
+O       10.0.0.0 [110/2] via 10.0.2.1, 04:36:17, FastEthernet0/0
+O       10.0.1.0 [110/3] via 10.0.2.1, 04:35:27, FastEthernet0/0
+O    192.168.32.0/24 [110/2] via 10.0.2.1, 04:42:08, FastEthernet0/0
+Campus-R2#show ip ospf neighbor
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+192.168.99.1      1   FULL/BDR        00:00:37    10.0.2.1        FastEthernet0/0
+Campus-R2#show ip ospf interface
+FastEthernet0/1 is up, line protocol is up 
+  Internet Address 192.168.60.1/24, Area 0 
+  Process ID 1, Router ID 192.168.60.1, Network Type BROADCAST, Cost: 1
+  Transmit Delay is 1 sec, State DR, Priority 1
+  Designated Router (ID) 192.168.60.1, Interface address 192.168.60.1
+  No backup designated router on this network
+  Timer intervals configured, Hello 10, Dead 40, Wait 40, Retransmit 5
+    oob-resync timeout 40
+    Hello due in 00:00:07
+  Supports Link-local Signaling (LLS)
+  Cisco NSF helper support enabled
+  IETF NSF helper support enabled
+  Index 2/2, flood queue length 0
+  Next 0x0(0)/0x0(0)
+  Last flood scan length is 0, maximum is 0
+  Last flood scan time is 0 msec, maximum is 0 msec
+  Neighbor Count is 0, Adjacent neighbor count is 0 
+  Suppress hello for 0 neighbor(s)
+FastEthernet0/0 is up, line protocol is up 
+  Internet Address 10.0.2.2/30, Area 0 
+  Process ID 1, Router ID 192.168.60.1, Network Type BROADCAST, Cost: 1
+  Transmit Delay is 1 sec, State DR, Priority 1
+  Designated Router (ID) 192.168.60.1, Interface address 10.0.2.2
+  Backup Designated router (ID) 192.168.99.1, Interface address 10.0.2.1
+  Timer intervals configured, Hello 10, Dead 40, Wait 40, Retransmit 5
+    oob-resync timeout 40
+    Hello due in 00:00:09
+  Supports Link-local Signaling (LLS)
+  Cisco NSF helper support enabled
+  IETF NSF helper support enabled
+  Index 1/1, flood queue length 0
+  Next 0x0(0)/0x0(0)
+  Last flood scan length is 0, maximum is 1
+  Last flood scan time is 0 msec, maximum is 4 msec
+  Neighbor Count is 1, Adjacent neighbor count is 1 
+    Adjacent with neighbor 192.168.99.1  (Backup Designated Router)
+  Suppress hello for 0 neighbor(s)
+Campus-R2#show arp
+Protocol  Address          Age (min)  Hardware Addr   Type   Interface
+Internet  10.0.2.1              212   0008.3067.9842  ARPA   FastEthernet0/0
+Internet  10.0.2.2                -   0007.0e63.2e40  ARPA   FastEthernet0/0
+Internet  192.168.60.1            -   0007.0e63.2e41  ARPA   FastEthernet0/1
+Internet  192.168.60.10         150   000c.29aa.c0d5  ARPA   FastEthernet0/1
+Internet  192.168.60.11          54   000c.296d.61da  ARPA   FastEthernet0/1
+Internet  192.168.60.13         148   000c.29c9.eaf0  ARPA   FastEthernet0/1
+Internet  192.168.60.50         101   b07b.256c.e956  ARPA   FastEthernet0/1
+Campus-R2#show interfaces
+FastEthernet0/0 is up, line protocol is up 
+  Hardware is MV96340 Ethernet, address is 0007.0e63.2e40 (bia 0007.0e63.2e40)
+  Internet address is 10.0.2.2/30
+  MTU 1500 bytes, BW 100000 Kbit/sec, DLY 100 usec, 
+     reliability 255/255, txload 44/255, rxload 1/255
+  Encapsulation ARPA, loopback not set
+  Keepalive set (10 sec)
+  Full-duplex, 100Mb/s, 100BaseTX/FX
+  ARP type: ARPA, ARP Timeout 04:00:00
+  Last input 00:00:00, output 00:00:00, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: fifo
+  Output queue: 0/40 (size/max)
+  5 minute input rate 287000 bits/sec, 371 packets/sec
+  5 minute output rate 17451000 bits/sec, 1554 packets/sec
+     4962767 packets input, 524082145 bytes
+     Received 3413 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored
+     0 watchdog
+     0 input packets with dribble condition detected
+     13304433 packets output, 18974950 bytes, 0 underruns
+     0 output errors, 0 collisions, 0 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 babbles, 0 late collision, 0 deferred
+     0 lost carrier, 0 no carrier
+     0 output buffer failures, 0 output buffers swapped out
+FastEthernet0/1 is up, line protocol is up 
+  Hardware is MV96340 Ethernet, address is 0007.0e63.2e41 (bia 0007.0e63.2e41)
+  Internet address is 192.168.60.1/24
+  MTU 1500 bytes, BW 100000 Kbit/sec, DLY 100 usec, 
+     reliability 255/255, txload 1/255, rxload 44/255
+  Encapsulation ARPA, loopback not set
+  Keepalive set (10 sec)
+  Full-duplex, 100Mb/s, 100BaseTX/FX
+  ARP type: ARPA, ARP Timeout 04:00:00
+  Last input 00:00:00, output 00:00:00, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: fifo
+  Output queue: 0/40 (size/max)
+  5 minute input rate 17451000 bits/sec, 1555 packets/sec
+  5 minute output rate 287000 bits/sec, 371 packets/sec
+     13328570 packets input, 23946896 bytes
+     Received 20498 broadcasts, 0 runts, 0 giants, 0 throttles
+     1 input errors, 0 CRC, 1 frame, 0 overrun, 0 ignored
+     0 watchdog
+     0 input packets with dribble condition detected
+     4964277 packets output, 524081334 bytes, 0 underruns
+     0 output errors, 0 collisions, 0 interface resets
+     27 unknown protocol drops
+     27 unknown protocol drops
+     0 babbles, 0 late collision, 0 deferred
+     0 lost carrier, 0 no carrier
+     0 output buffer failures, 0 output buffers swapped out
+Serial0/0/0 is administratively down, line protocol is down 
+  Hardware is HWIC-Serial
+  MTU 1500 bytes, BW 2048 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: fifo
+  Output queue: 0/40 (size/max)
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+Serial0/0/1 is administratively down, line protocol is down 
+  Hardware is HWIC-Serial
+  MTU 1500 bytes, BW 2048 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: weighted fair
+  Output queue: 0/1000/64/0 (size/max total/threshold/drops) 
+     Conversations  0/0/256 (active/max active/max total)
+     Reserved Conversations 0/0 (allocated/max allocated)
+     Available Bandwidth 1536 kilobits/sec
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+Serial0/0/2 is administratively down, line protocol is down 
+  Hardware is HWIC-Serial
+  MTU 1500 bytes, BW 2048 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: weighted fair
+  Output queue: 0/1000/64/0 (size/max total/threshold/drops) 
+     Conversations  0/0/256 (active/max active/max total)
+     Reserved Conversations 0/0 (allocated/max allocated)
+     Available Bandwidth 1536 kilobits/sec
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+Serial0/0/3 is administratively down, line protocol is down 
+  Hardware is HWIC-Serial
+  MTU 1500 bytes, BW 2048 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: weighted fair
+  Output queue: 0/1000/64/0 (size/max total/threshold/drops) 
+     Conversations  0/0/256 (active/max active/max total)
+     Reserved Conversations 0/0 (allocated/max allocated)
+     Available Bandwidth 1536 kilobits/sec
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+Serial0/1/0 is administratively down, line protocol is down 
+  Hardware is GT96K Serial
+  MTU 1500 bytes, BW 1544 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: weighted fair
+  Output queue: 0/1000/64/0 (size/max total/threshold/drops) 
+     Conversations  0/0/256 (active/max active/max total)
+     Reserved Conversations 0/0 (allocated/max allocated)
+     Available Bandwidth 1158 kilobits/sec
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+Serial0/1/1 is administratively down, line protocol is down 
+  Hardware is GT96K Serial
+  MTU 1500 bytes, BW 1544 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: weighted fair
+  Output queue: 0/1000/64/0 (size/max total/threshold/drops) 
+     Conversations  0/0/256 (active/max active/max total)
+     Reserved Conversations 0/0 (allocated/max allocated)
+     Available Bandwidth 1158 kilobits/sec
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+GigabitEthernet0/2/0 is administratively down, line protocol is down 
+  Hardware is PM-3387, address is 0007.0e63.2e49 (bia 0007.0e63.2e49)
+  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation ARPA, loopback not set
+  Keepalive set (10 sec)
+  Full-duplex, 1000Mb/s, link type is autonegotiation, media type is no media
+  output flow-control is XON, input flow-control is XON
+  ARP type: ARPA, ARP Timeout 04:00:00
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: fifo
+  Output queue: 0/40 (size/max)
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored
+     0 watchdog, 0 multicast, 0 pause input
+     0 input packets with dribble condition detected
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 1 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 babbles, 0 late collision, 0 deferred
+     0 lost carrier, 0 no carrier, 0 pause output
+     0 output buffer failures, 0 output buffers swapped out
+Serial0/3/0 is administratively down, line protocol is down 
+  Hardware is HWIC-Serial
+  MTU 1500 bytes, BW 2048 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: weighted fair
+  Output queue: 0/1000/64/0 (size/max total/threshold/drops) 
+     Conversations  0/0/256 (active/max active/max total)
+     Reserved Conversations 0/0 (allocated/max allocated)
+     Available Bandwidth 1536 kilobits/sec
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+Serial0/3/1 is administratively down, line protocol is down 
+  Hardware is HWIC-Serial
+  MTU 1500 bytes, BW 2048 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: weighted fair
+  Output queue: 0/1000/64/0 (size/max total/threshold/drops) 
+     Conversations  0/0/256 (active/max active/max total)
+     Reserved Conversations 0/0 (allocated/max allocated)
+     Available Bandwidth 1536 kilobits/sec
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+Serial0/3/2 is administratively down, line protocol is down 
+  Hardware is HWIC-Serial
+  MTU 1500 bytes, BW 2048 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: weighted fair
+  Output queue: 0/1000/64/0 (size/max total/threshold/drops) 
+     Conversations  0/0/256 (active/max active/max total)
+     Reserved Conversations 0/0 (allocated/max allocated)
+     Available Bandwidth 1536 kilobits/sec
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+Serial0/3/3 is administratively down, line protocol is down 
+  Hardware is HWIC-Serial
+  MTU 1500 bytes, BW 2048 Kbit/sec, DLY 20000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation HDLC, loopback not set
+  Keepalive set (10 sec)
+  CRC checking enabled
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  Queueing strategy: weighted fair
+  Output queue: 0/1000/64/0 (size/max total/threshold/drops) 
+     Conversations  0/0/256 (active/max active/max total)
+     Reserved Conversations 0/0 (allocated/max allocated)
+     Available Bandwidth 1536 kilobits/sec
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 3 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+     0 carrier transitions
+     DCD=down  DSR=down  DTR=down  RTS=down  CTS=down
+
+SSLVPN-VIF0 is up, line protocol is up 
+  Hardware is SSLVPN_VIF
+  Interface is unnumbered. Using address of SSLVPN-VIF0 (0.0.0.0)
+  MTU 1406 bytes, BW 56 Kbit/sec, DLY 5000 usec, 
+     reliability 255/255, txload 1/255, rxload 1/255
+  Encapsulation UNKNOWN, loopback not set
+  Last input never, output never, output hang never
+  Last clearing of "show interface" counters never
+  Input queue: 0/75/0/0 (size/max/drops/flushes); Total output drops: 0
+  5 minute input rate 0 bits/sec, 0 packets/sec
+  5 minute output rate 0 bits/sec, 0 packets/sec
+     0 packets input, 0 bytes, 0 no buffer
+     Received 0 broadcasts, 0 runts, 0 giants, 0 throttles
+     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored, 0 abort
+     0 packets output, 0 bytes, 0 underruns
+     0 output errors, 0 collisions, 0 interface resets
+     0 unknown protocol drops
+     0 unknown protocol drops
+     0 output buffer failures, 0 output buffers swapped out
+Campus-R2#
