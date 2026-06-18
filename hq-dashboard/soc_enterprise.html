@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>MASS · HQ Manager — Galala University</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:        oklch(0.17 0.025 252);
+    --bg-2:      oklch(0.20 0.028 252);
+    --surface:   oklch(0.225 0.030 252);
+    --surface-2: oklch(0.26 0.032 252);
+    --line:      oklch(0.32 0.035 252);
+    --line-2:    oklch(0.40 0.04 252);
+    --ink:       oklch(0.97 0.005 252);
+    --ink-2:     oklch(0.82 0.012 252);
+    --ink-3:     oklch(0.62 0.018 252);
+    --ink-4:     oklch(0.48 0.02 252);
+
+    --cyan:      oklch(0.80 0.14 210);
+    --cyan-2:    oklch(0.72 0.16 215);
+    --violet:    oklch(0.70 0.18 290);
+    --violet-2:  oklch(0.62 0.20 292);
+
+    --ok:        oklch(0.76 0.18 150);
+    --warn:      oklch(0.82 0.16 78);
+    --hi:        oklch(0.74 0.20 45);
+    --crit:      oklch(0.68 0.22 25);
+    --info:      oklch(0.78 0.14 210);
+
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  .upper{text-transform:uppercase;letter-spacing:.14em}
+  .num{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+  /* Global ambient grid + glow background */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(60% 50% at 20% 0%, oklch(0.32 0.10 250 / .35), transparent 70%),
+      radial-gradient(40% 40% at 100% 100%, oklch(0.32 0.10 295 / .25), transparent 70%),
+      linear-gradient(transparent 95%, oklch(1 0 0 / .025) 0) 0 0/40px 40px,
+      linear-gradient(90deg, transparent 95%, oklch(1 0 0 / .025) 0) 0 0/40px 40px;
+  }
+
+  #app{position:relative;z-index:1;min-height:100vh}
+
+  /* Card primitives */
+  .card{
+    background: linear-gradient(180deg, oklch(0.235 0.03 252 / .85), oklch(0.21 0.028 252 / .85));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    backdrop-filter: blur(6px);
+    position:relative;
+  }
+  .card-pad{padding:18px}
+  .card-title{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--ink-3);font-weight:600}
+  .card-title .dot{width:6px;height:6px;border-radius:99px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+  .card-title .pulse{animation:pulse 1.8s infinite}
+  .hairline{height:1px;background:linear-gradient(90deg,transparent,var(--line-2),transparent);margin:14px 0}
+
+  /* Status colors */
+  .c-ok{color:var(--ok)} .c-warn{color:var(--warn)} .c-hi{color:var(--hi)} .c-crit{color:var(--crit)} .c-cyan{color:var(--cyan)} .c-violet{color:var(--violet)} .c-ink2{color:var(--ink-2)} .c-ink3{color:var(--ink-3)}
+  .bg-ok{background:color-mix(in oklab, var(--ok) 18%, transparent);border-color:color-mix(in oklab, var(--ok) 40%, var(--line))}
+  .bg-warn{background:color-mix(in oklab, var(--warn) 18%, transparent);border-color:color-mix(in oklab, var(--warn) 40%, var(--line))}
+  .bg-hi{background:color-mix(in oklab, var(--hi) 18%, transparent);border-color:color-mix(in oklab, var(--hi) 40%, var(--line))}
+  .bg-crit{background:color-mix(in oklab, var(--crit) 18%, transparent);border-color:color-mix(in oklab, var(--crit) 40%, var(--line))}
+  .bg-cyan{background:color-mix(in oklab, var(--cyan) 14%, transparent);border-color:color-mix(in oklab, var(--cyan) 40%, var(--line))}
+  .bg-violet{background:color-mix(in oklab, var(--violet) 14%, transparent);border-color:color-mix(in oklab, var(--violet) 40%, var(--line))}
+
+  /* Pulse + flow animations */
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.92)}}
+  @keyframes pulsering{0%{transform:scale(.6);opacity:1}100%{transform:scale(2.6);opacity:0}}
+  @keyframes flowdash{to{stroke-dashoffset:-200}}
+  @keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+  @keyframes floaty{0%{transform:translateY(0);opacity:.0}10%{opacity:.9}100%{transform:translateY(-40px);opacity:0}}
+  @keyframes glow-soft{0%,100%{filter:drop-shadow(0 0 4px currentColor)}50%{filter:drop-shadow(0 0 14px currentColor)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes slidein{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+  .live-dot{display:inline-flex;align-items:center;gap:8px;font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.14em}
+  .live-dot::before{content:"";width:8px;height:8px;border-radius:99px;background:var(--ok);box-shadow:0 0 12px var(--ok);animation:pulse 1.6s infinite}
+
+  /* Scrollbars */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:99px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* Sidebar */
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:248px;background:linear-gradient(180deg,oklch(0.18 0.03 252 / .98), oklch(0.16 0.028 252 / .95));border-right:1px solid var(--line);z-index:5}
+  @media print{.sidebar{display:none!important}.main{margin-left:0!important;padding-left:0!important;width:100%!important}.topbar{display:none!important}.no-print{display:none!important}.layout{display:block!important}body{background:white!important}@page{margin:10mm;size:A4}}
+  .sidebar.collapsed{width:64px}
+  .layout{padding-left:248px;transition:padding .25s ease}
+  .layout.collapsed{padding-left:64px}
+
+  /* Top bar */
+  .topbar{position:sticky;top:0;z-index:3;background:linear-gradient(180deg,oklch(0.18 0.028 252 / .95), oklch(0.18 0.028 252 / .85));backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 26px;display:flex;align-items:center;gap:18px}
+
+  /* Threat level badges */
+  .thr-badge{display:inline-flex;align-items:center;gap:10px;padding:8px 14px;border-radius:99px;border:1px solid currentColor;font-weight:600;letter-spacing:.18em;font-size:12px}
+  .thr-badge .dot{width:8px;height:8px;border-radius:99px;background:currentColor;box-shadow:0 0 12px currentColor;animation:pulse 1.5s infinite}
+
+  /* Reusable tile shell with corner brackets */
+  .bracket-card{position:relative}
+  .bracket-card::before,.bracket-card::after{
+    content:"";position:absolute;width:10px;height:10px;border-color:var(--cyan);border-style:solid;opacity:.6;
+  }
+  .bracket-card::before{top:6px;left:6px;border-width:1px 0 0 1px}
+  .bracket-card::after{bottom:6px;right:6px;border-width:0 1px 1px 0}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--surface);padding:8px 14px;border-radius:8px;color:var(--ink);font-family:inherit;font-size:12px;letter-spacing:.06em;cursor:pointer;transition:all .15s}
+  .btn:hover{border-color:var(--cyan);color:var(--cyan)}
+  .btn.primary{background:color-mix(in oklab, var(--cyan) 22%, transparent);border-color:var(--cyan);color:var(--cyan)}
+
+  /* Tag */
+  .tag{display:inline-flex;align-items:center;gap:6px;font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--line-2);background:var(--surface);text-transform:uppercase;letter-spacing:.14em;color:var(--ink-2)}
+
+  /* Misc */
+  .grid{display:grid;gap:14px}
+  .row{display:flex;gap:14px;align-items:center}
+  .between{display:flex;justify-content:space-between;align-items:center}
+  .wrap{flex-wrap:wrap}
+  .gap-6{gap:6px}.gap-10{gap:10px}.gap-14{gap:14px}.gap-20{gap:20px}
+  h1,h2,h3,h4{margin:0;font-weight:600}
+  small,.tiny{font-size:11px;color:var(--ink-3)}
+  hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
+
+  /* Scanline accent under cards */
+  .scanline{position:absolute;left:0;right:0;top:0;height:1px;overflow:hidden;border-radius:var(--radius) var(--radius) 0 0;pointer-events:none}
+  .scanline span{display:block;height:100%;width:30%;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:scan 4s linear infinite;opacity:.55}
+
+  /* Honeycomb hex */
+  .hex{width:42px;height:48px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;position:relative;background:var(--surface-2)}
+
+  /* Tooltip-style label */
+  .kbd{font-family:'JetBrains Mono';font-size:10px;color:var(--ink-3);border:1px solid var(--line);padding:2px 6px;border-radius:6px;background:var(--surface)}
+
+  /* Misc utility */
+  .flex-1{flex:1 1 auto}
+  .text-right{text-align:right}
+  .text-center{text-align:center}
+  .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* page enter animation */
+  .page-enter{animation:fadeup .35s ease both}
+  @keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="src/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="src/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="src/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="src/data.jsx"></script>
+<script type="text/babel" src="src/shell.jsx"></script>
+<script type="text/babel" src="src/overview.jsx"></script>
+<script type="text/babel" src="src/ai-intel.jsx"></script>
+<script type="text/babel" src="src/timeline.jsx"></script>
+<script type="text/babel" src="src/map.jsx"></script>
+<script type="text/babel" src="src/correlations.jsx"></script>
+<script type="text/babel" src="src/soar.jsx"></script>
+    <script type="text/babel" src="src/incidents.jsx"></script>
+    <script type="text/babel" src="src/report.jsx"></script>
+    <script type="text/babel" src="src/threats.jsx"></script>
+    <script type="text/babel" src="src/forensic.jsx"></script>
+    <script type="text/babel" src="src/topology.jsx"></script>
+    <script type="text/babel" src="src/compliance.jsx"></script>
+    <script type="text/babel" src="src/roi.jsx"></script>
+    <script type="text/babel" src="src/tenants.jsx"></script>
+    <script type="text/babel" src="src/marketplace.jsx"></script>
+    <script type="text/babel" src="src/killchain.jsx"></script>
+<script type="text/babel" src="src/prediction.jsx"></script>
+<script type="text/babel" src="src/twin.jsx"></script>
+<script type="text/babel" src="src/app.jsx"></script>
+</body>
+</html>
