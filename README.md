@@ -1,10 +1,10 @@
-# 🛡️ MASS: A Predictive Cyber-Physical Security System
+# MASS: A Predictive Cyber-Physical Security System
 
 > **MASS** (Predictive Cyber-Physical Security System) is a multi-agent, enterprise-grade Security Operations Center (SOC) designed to detect, analyze, correlate, and autonomously mitigate hybrid cyber-physical threats in real-time.
 
 ---
 
-## 🏗️ System Architecture & Data Flow
+##  System Architecture & Data Flow
 
 ```mermaid
 graph TD
@@ -121,7 +121,7 @@ An interactive Single-Page-Application (SPA) built using React/JSX containing:
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 * **Docker & Docker Compose**
