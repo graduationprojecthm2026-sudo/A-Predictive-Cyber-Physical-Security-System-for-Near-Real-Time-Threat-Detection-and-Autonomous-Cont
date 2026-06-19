@@ -89,7 +89,7 @@ graph TD
 ├── 📁 agents/                     # Telemetry agents deployed across the network (placeholders)
 ├── 📁 docs/                       # Project documentation & diagrams
 ├── 📁 hardware/                   # Physical CAD/wiring specifications
-└── 📁 serverroom/                 # serverroom and AUTHserver
+└── 📁 serverroom/                 # Server_room and AUTHServer
 ```
 
 ---
