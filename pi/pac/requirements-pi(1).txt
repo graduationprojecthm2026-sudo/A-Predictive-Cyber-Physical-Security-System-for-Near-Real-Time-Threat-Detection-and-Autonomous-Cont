@@ -1,0 +1,16 @@
+# MASS PAC Pi — Python requirements
+mfrc522==0.0.7
+#RPi.GPIO==0.7.1
+lgpio==0.2.2.0
+adafruit-circuitpython-fingerprint==2.2.25
+pyserial==3.5
+confluent-kafka==2.3.0
+paho-mqtt==1.6.1
+fastapi==0.109.0
+uvicorn==0.25.0
+pydantic==2.5.3
+python-dotenv==1.0.0
+PyJWT==2.8.0
+ldap3==2.9.1
+numpy==1.26.4
+rpi-lgpio==0.6

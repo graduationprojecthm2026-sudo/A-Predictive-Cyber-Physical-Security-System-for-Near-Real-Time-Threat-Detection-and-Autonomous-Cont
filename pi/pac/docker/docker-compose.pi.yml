@@ -1,0 +1,66 @@
+###############################################################################
+# docker-compose.pi.yml — MASS PAC Node (Raspberry Pi 5)
+# Runs on the Pi itself — connects to server room Kafka
+#
+# Usage:
+#   cd /home/pi/mass-pi
+#   docker compose -f docker/docker-compose.pi.yml up -d
+###############################################################################
+
+services:
+
+  # ── Door Hardware Controller ───────────────────────────────────────────────
+  # Reads RC522, controls relay + buzzer, publishes pac.events to Kafka
+  door-process:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.pac
+    container_name: mass-door-process
+    privileged: true          # Required for GPIO/SPI access on Pi
+    devices:
+      - /dev/spidev0.0:/dev/spidev0.0   # RC522 SPI
+      - /dev/gpiochip4:/dev/gpiochip4   # Pi 5 GPIO chip
+    environment:
+      KAFKA_BROKER:  ${KAFKA_BROKER:-192.168.20.200:9092}
+      BUILDING:      ${BUILDING:-building_a}
+      FLOOR:         ${FLOOR:-1}
+      DOOR_ID:       ${DOOR_ID:-door_acad_f1_d1}
+      GATEWAY_ID:    ${GATEWAY_ID:-GW-PAC-ACADEMIC-F1-01}
+      UNLOCK_SEC:    ${UNLOCK_SEC:-5}
+      HEALTH_PORT:   "8090"
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+    command: ["python", "door_process.py"]
+
+  # ── PAC-EDA Agent ─────────────────────────────────────────────────────────
+  # Consumes pac.events from Kafka, runs detection rules, publishes pac.alerts
+  pac-eda-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.pac
+    container_name: mass-pac-eda-agent
+    environment:
+      AGENT_ID:        ${AGENT_ID:-pac-eda-agent-pi-01}
+      KAFKA_BOOTSTRAP: ${KAFKA_BROKER:-192.168.20.200:9092}
+      HEALTH_PORT:     "8002"
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+    command: ["python", "-m", "agents.physical_access.pac_eda_agent.main"]
+
+  # ── Credential Anomaly Agent ───────────────────────────────────────────────
+  # Detects impossible travel, credential sharing, off-schedule patterns
+  credential-anomaly-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.pac
+    container_name: mass-cred-anomaly-agent
+    environment:
+      AGENT_ID:        ${AGENT_ID:-cred-anomaly-agent-pi-01}
+      KAFKA_BOOTSTRAP: ${KAFKA_BROKER:-192.168.20.200:9092}
+      HEALTH_PORT:     "8003"
+    ports:
+      - "8003:8003"
+    restart: unless-stopped
+    command: ["python", "-m", "agents.physical_access.credential_anomaly_agent.main"]

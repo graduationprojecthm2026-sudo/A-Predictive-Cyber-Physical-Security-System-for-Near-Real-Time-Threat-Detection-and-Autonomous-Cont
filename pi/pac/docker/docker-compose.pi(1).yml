@@ -1,0 +1,74 @@
+###############################################################################
+# docker-compose.pi.yml — MASS PAC Node (Raspberry Pi 5)
+# Usage:
+#   cd /home/pi/mass-pi
+#   docker compose -f docker/docker-compose.pi.yml up -d --build
+###############################################################################
+services:
+  # ── Door Hardware Controller ───────────────────────────────────────────────
+  door-process:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.pac
+    container_name: mass-door-process
+    privileged: true
+    devices:
+      - /dev/spidev0.0:/dev/spidev0.0
+      - /dev/gpiochip0:/dev/gpiochip0
+      - /dev/gpiochip4:/dev/gpiochip4
+    volumes:
+      - /tmp:/tmp
+      - /home/pi/mass-pi/door_process.py:/app/door_process.py:ro
+    environment:
+      KAFKA_BROKER:      ${KAFKA_BROKER:-192.168.60.10:9092}
+      BUILDING:          ${BUILDING:-building_a}
+      FLOOR:             ${FLOOR:-1}
+      DOOR_ID:           ${DOOR_ID:-door_acad_f1_d1}
+      GATEWAY_ID:        ${GATEWAY_ID:-GW-PAC-ACADEMIC-F1-01}
+      UNLOCK_SEC:        ${UNLOCK_SEC:-5}
+      LG_CHIP:           "0"
+      PYTHONUNBUFFERED:  "1"
+    healthcheck:
+      test: ["NONE"]
+    restart: unless-stopped
+    command: ["python", "door_process.py"]
+
+  # ── PAC Event-Driven Agent ────────────────────────────────────────────────
+  pac-eda-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.pac
+    container_name: mass-pac-eda-agent
+    volumes:
+      - /home/pi/mass-pi/agents:/app/agents:ro
+      - /home/pi/mass-pi/common:/app/common:ro
+    environment:
+      AGENT_ID:          pac-eda-agent-01
+      KAFKA_BOOTSTRAP:   ${KAFKA_BROKER:-192.168.60.10:9092}
+      HEALTH_PORT:       "8002"
+      PYTHONUNBUFFERED:  "1"
+      TZ:                "Africa/Cairo"
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+    command: ["python", "-m", "agents.physical_access.pac_eda_agent.main"]
+
+  # ── Credential Anomaly Agent ───────────────────────────────────────────────
+  credential-anomaly-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.pac
+    container_name: mass-cred-anomaly-agent
+    volumes:
+      - /home/pi/mass-pi/agents:/app/agents:ro
+      - /home/pi/mass-pi/common:/app/common:ro
+    environment:
+      AGENT_ID:          credential-anomaly-agent-01
+      KAFKA_BOOTSTRAP:   ${KAFKA_BROKER:-192.168.60.10:9092}
+      HEALTH_PORT:       "8003"
+      PYTHONUNBUFFERED:  "1"
+      TZ:                "Africa/Cairo"
+    ports:
+      - "8003:8003"
+    restart: unless-stopped
+    command: ["python", "-m", "agents.physical_access.credential_anomaly_agent.main"]
