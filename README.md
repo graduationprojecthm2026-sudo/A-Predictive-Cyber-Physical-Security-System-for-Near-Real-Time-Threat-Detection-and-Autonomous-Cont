@@ -94,7 +94,7 @@ graph TD
 
 ---
 
-## ⚡ Core Components
+##  Core Components
 
 ### 1. `HQ (central manager)`
 * **`central_manager`**: A FastAPI application that gathers telemetry, aggregates logs from all active agents, and exposes real-time data to the SOC dashboard.
