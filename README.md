@@ -10,9 +10,9 @@
 graph TD
     %% Telemetry Sources
     subgraph Edge & Local Environments [Edge Telemetry & Control]
-        A[IoT Sensors] -->|MQTT| LM_IoT[IoT Local Manager]
-        B[Physical Access Control] -->|MQTT| LM_PAC[PAC Local Manager]
-        C[Network Traffic] -->|Syslog| LM_Data[Data Local Manager]
+        A[IoT Sensors & Fire Systems] -->|MQTT| LM_IoT[IoT Local Manager]
+        B[RFID Doors & Camera Feeds] -->|MQTT| LM_PAC[PAC Local Manager]
+        C[Network Traffic Logs] -->|Syslog| LM_Data[Data Local Manager]
     end
 
     %% Message Bus
@@ -65,24 +65,30 @@ graph TD
 │   ├── 📁 common/                 # Shared Kafka clients, models, and security libraries
 │   └── 📁 docker/                 # Centralized Dockerfiles and docker-compose deployment files
 │
-├── 📁 dashboards/                 # Frontend Visualization Panels
-│   ├── 📁 hq_dashboard/           # Rich Campus SOC Dashboard (overview, twin, threat prediction)
-│   └── 📁 local_manager_dashboard/ # Placeholder for building-level local dashboards
+├── 📁 Local_manager/               # Building-level managers (Data, IoT, PAC)
+│   ├── 📁 managers/               # Implementation for local data, IoT, and PAC controllers
+│   ├── 📄 soar_executor.py        # Edge-level SOAR responder executing local actions
+│   ├── 📄 local_manager.html      # Local manager monitoring UI
+│   └── 📄 START_MASS.sh           # Local manager launch script
 │
-├── 📁 agents/                     # Telemetry agents deployed across the network
-│   ├── 📁 advanced/               # advanced edge forensic and TI agents
-│   ├── 📁 data_network/           # NDR / EDR traffic telemetry collectors
-│   ├── 📁 iot/                    # Behavioral monitoring and gateway agents
-│   └── 📁 physical_access/        # Credential anomaly & Physical Access Control (PAC) agents
+├── 📁 dashboards/                 # Frontend Visualization Panels
+│   └── 📁 hq_dashboard/           # Rich Campus SOC Dashboard (overview, twin, threat prediction)
+│
+├── 📁 pi/                         # Edge code running on Raspberry Pi controllers
+│   ├── 📁 iot/                    # IoT sensors, gateway agents & fire system agent scripts
+│   └── 📁 pac/                    # RFID doors control, camera agents, pac_eda_agent
+│
+├── 📁 collectors/                 # Edge telemetry and logs ingestion scripts
+│   ├── 📄 network_collector.py    # Log & syslog collector for network traffic
+│   └── 📄 telemetry_collector.py  # System telemetry metric gatherer
 │
 ├── 📁 network/                    # Network segmentation and infrastructure configs
 │   ├── 📁 Switches/               # Core switches configuration files
 │   └── 📁 Routers/                # Router ACLs and routing configurations
 │
-├── 📁 local-managers/             # Building-level managers (IoT, PAC, Data)
-├── 📁 collectors/                 # Edge telemetry and logs ingestion scripts
+├── 📁 agents/                     # Telemetry agents deployed across the network (placeholders)
+├── 📁 docs/                       # Project documentation & diagrams
 ├── 📁 hardware/                   # Physical CAD/wiring specifications
-├── 📁 pi/                         # Edge code running on Raspberry Pi controllers
 └── 📁 serverroom/                 # Virtualization and Pi-hole configurations
 ```
 
@@ -98,17 +104,20 @@ graph TD
 * **`forensic_agent`**: Triggers automated evidence capture, taking process snapshots and logs from target hosts during high-severity incidents.
 * **`ti_agent`**: Feeds real-time IP blacklists, malware hashes, and known bad domains to the correlation engine.
 
-### 2. `dashboards/hq_dashboard`
+### 2. `Local_manager`
+* **Local Managers**: Building-specific controllers for IoT, Physical Access (PAC), and Data Networks. They filter local telemetry, manage local device states, and forward security events to the HQ Central Manager.
+* **`soar_executor.py`**: Executes mitigation actions received from the HQ SOAR orchestrator on local network interfaces and access devices.
+
+### 3. `pi/` (Raspberry Pi Edge Deployments)
+* **`pi/iot/`**: Runs gateway classifiers, fire alarm controllers, and sensor polling scripts to monitor physical environments.
+* **`pi/pac/`**: Runs RFID door locks (`rfid_door.py`), access log verification agents (`pac_eda_agent`), and camera snapshot helpers.
+
+### 4. `dashboards/hq_dashboard`
 An interactive Single-Page-Application (SPA) built using React/JSX containing:
 * **Digital Twin**: 3D and 2D layouts of campus environments.
 * **Attack Path Predictions**: Visual forecasts showing high-probability targets.
 * **Incident Correlation Feed**: Combined view of data networks, physical access controls, and IoT domains.
 * **SOAR Automation Logs**: Real-time checklist showing active playbooks and executed commands.
-
-### 3. `network/`
-Contains real-world Cisco/Arista network configurations representing secure campus network infrastructure:
-* **`Switches/`**: Port maps, VLAN segmentations, and access control policies.
-* **`Routers/`**: NAT rules, site-to-site VPNs, and WAN interfaces.
 
 ---
 
