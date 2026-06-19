@@ -1,0 +1,35 @@
+gateway:
+  id: GW-PI5-01
+  location: Academic/Floor1/LabA
+kafka:
+  bootstrap_servers: 192.168.60.10:9092   # overridden by KAFKA_BOOTSTRAP env if set
+  enabled: true
+mqtt:
+  broker: 192.168.60.10 # "192.168.60.10" #192.168.60.10
+  port: 1883
+  tls:
+    ca_cert: ''
+    client_cert: ''
+    client_key: ''
+  topics:
+    subscribe: sensors/academic/floor1/#
+sensors:
+  whitelist:
+  - DHT22-ACADEMIC-F1-LABA-01
+  - MQ2-ACADEMIC-F1-LABA-01
+  - PIR-ACADEMIC-F1-LABA-01
+  - GAS-TEST-01
+  - GAS-ACADEMIC-F1-LABA-01
+  - NODE-PI5-CORE
+thresholds:
+  gas:
+    high: 450
+    medium: 300
+    min_sustained_points: 3
+    sustained_duration_sec: 10
+  temperature:
+    high: 50
+    medium: 35
+    min_sustained_points: 3
+    sustained_duration_sec: 10
+
